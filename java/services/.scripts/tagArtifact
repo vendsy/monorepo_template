@@ -1,0 +1,7 @@
+#!/bin/sh -e
+
+# Responsible for assigning a tag to a remote artifact. This action should be
+# idempotent, and it should also remove the tag from the artifact that
+# previously had this tag.
+
+# TODO

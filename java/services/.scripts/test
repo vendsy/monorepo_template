@@ -1,0 +1,5 @@
+#!/bin/sh -e
+
+# Responsible for testing a local artifact.
+
+./gradlew test "$@"

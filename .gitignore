@@ -1,0 +1,3 @@
+# Put language specific ignores in <language>/.gitignore
+
+**/.DS_Store

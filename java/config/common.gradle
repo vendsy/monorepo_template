@@ -1,0 +1,170 @@
+ext {
+
+    getGitHash = { ->
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }.memoize()
+
+    getGitTime = { ->
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'reflog', '-1', '--format="%cI"'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }.memoize()
+
+    getJibTags = { ->
+        tags = []
+        if (System.getenv("CI") == null) {
+            tags.add("developer")
+        } else {
+            tags.add(getGitHash())
+        }
+    }.memoize()
+
+}
+
+dependencies {
+
+    implementation platform(libs.micrometerPlatform)
+    implementation platform(libs.junit5Platform)
+
+    pluginManager.withPlugin('java-test-fixtures') {
+        testFixturesImplementation platform(libs.micrometerPlatform)
+        testFixturesImplementation platform(libs.junit5Platform)
+    }
+
+    constraints {
+
+        implementation libs.javax.annotationApi
+        implementation libs.javax.injectApi
+        implementation libs.javax.persistenceApi
+        implementation libs.javax.restApi
+        implementation libs.javax.validationApi
+
+        pluginManager.withPlugin('java-test-fixtures') {
+
+            testFixturesImplementation libs.javax.annotationApi
+            testFixturesImplementation libs.javax.injectApi
+            testFixturesImplementation libs.javax.persistenceApi
+            testFixturesImplementation libs.javax.restApi
+            testFixturesImplementation libs.javax.validationApi
+
+        }
+
+    }
+
+}
+
+configurations.all {
+
+    resolutionStrategy {
+
+        dependencySubstitution {
+            substitute module('javax.annotation:javax.annotation-api') with module(libs.javax.annotationApi)
+            substitute module('javax.inject:javax.inject') with module(libs.javax.injectApi)
+            substitute module('javax.persistence:javax.persistence-api') with module(libs.javax.persistenceApi)
+            substitute module('javax.validation:validation-api') with module(libs.javax.validationApi)
+            substitute module('javax.ws.rs:javax.ws.rs-api') with module(libs.javax.restApi)
+        }
+
+        eachDependency { DependencyResolveDetails details ->
+
+            if (details.requested.group == 'com.google.guava' && details.requested.version.contains('android')) {
+                details.useVersion details.requested.version.replace('android', 'jre')
+                details.because 'we want the JRE version of Guava'
+            }
+
+        }
+
+    }
+}
+
+pluginManager.withPlugin('jacoco') {
+    jacoco {
+        toolVersion = '0.8.8'
+    }
+}
+
+pluginManager.withPlugin('java') {
+
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+
+    [compileJava, compileTestJava]*.options.collect { options ->
+        options.compilerArgs.add '-parameters'
+        options.encoding = 'UTF-8'
+    }
+
+}
+
+pluginManager.withPlugin('application') {
+    distTar.enabled = false
+    project.startScripts.with {
+        doLast {
+            unixScript.text = unixScript.text.replace('DEFAULT_JVM_OPTS=', 'cd $APP_HOME\necho running from $APP_HOME\nDEFAULT_JVM_OPTS=')
+            windowsScript.text = windowsScript.text.replace('set DEFAULT_JVM_OPTS=', 'cd %APP_HOME%\r\necho running from %APP_HOME%\r\nset DEFAULT_JVM_OPTS=')
+        }
+    }
+
+}
+
+pluginManager.withPlugin('idea') {
+    if (System.getProperty('idea.active')) {
+        sourceSets {
+            main {
+                resources {
+                    srcDirs += ['src/main/java']
+                    excludes = ['logback.xml']
+                }
+            }
+        }
+    }
+}
+
+pluginManager.withPlugin('com.google.cloud.tools.jib') {
+
+    jib {
+        from {
+            image = 'adoptopenjdk/openjdk11:alpine-jre'
+        }
+        to {
+            tags = getJibTags()
+        }
+        container {
+            appRoot = workingDirectory = '/app'
+            entrypoint = ['./start.sh']
+            ports = ['8080/tcp']
+        }
+        extraDirectories {
+            paths {
+                path {
+                    from = file('src/main/jib/app')
+                    into = '/app'
+                }
+                path {
+                    from = file('src/dist/public')
+                    into = '/app/public'
+                }
+            }
+            permissions = [
+                    '/app/start.sh': '755'
+            ]
+        }
+    }
+
+    project.afterEvaluate {
+        // TARGET_IMAGE is set by the script `java/servers/.scripts/uploadArtifact`
+        if (System.getenv("TARGET_IMAGE") != null) {
+            jib.to.image = System.getenv("TARGET_IMAGE")
+        } else {
+            jib.to.image = dockerImageName
+        }
+    }
+
+}

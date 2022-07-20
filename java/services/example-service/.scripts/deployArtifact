@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+../.scripts/deployArtifact "$@" $(cat .scripts/serviceName)

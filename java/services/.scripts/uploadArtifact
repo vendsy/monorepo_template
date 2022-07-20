@@ -1,0 +1,6 @@
+#!/bin/sh -e
+
+# Responsible for uploading the local artifact to a remote environment with an
+# attached version.
+
+# TODO

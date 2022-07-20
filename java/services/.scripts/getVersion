@@ -1,0 +1,7 @@
+#!/bin/bash -e
+
+# Responsible for returning the version of the artifact currently tagged with
+# the given tag. This script should not produce any output aside from the
+# version of the artifact.
+
+# TODO
