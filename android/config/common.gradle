@@ -1,0 +1,95 @@
+ext {
+
+    getGitHash = { ->
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }.memoize()
+
+    getGitTime = { ->
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'reflog', '-1', '--format="%cI"'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }.memoize()
+
+}
+
+dependencies {
+
+    implementation platform(libs.micrometerPlatform)
+    implementation platform(libs.junit5Platform)
+
+    pluginManager.withPlugin('java-test-fixtures') {
+        testFixturesImplementation platform(libs.micrometerPlatform)
+        testFixturesImplementation platform(libs.junit5Platform)
+    }
+
+    constraints {
+
+        implementation libs.javax.annotationApi
+        implementation libs.javax.injectApi
+        implementation libs.javax.persistenceApi
+        implementation libs.javax.restApi
+        implementation libs.javax.validationApi
+
+        pluginManager.withPlugin('java-test-fixtures') {
+
+            testFixturesImplementation libs.javax.annotationApi
+            testFixturesImplementation libs.javax.injectApi
+            testFixturesImplementation libs.javax.persistenceApi
+            testFixturesImplementation libs.javax.restApi
+            testFixturesImplementation libs.javax.validationApi
+
+        }
+
+    }
+
+}
+
+configurations.all {
+
+    resolutionStrategy {
+
+        dependencySubstitution {
+            substitute module('javax.annotation:javax.annotation-api') with module(libs.javax.annotationApi.get().toString())
+            substitute module('javax.inject:javax.inject') with module(libs.javax.injectApi.get().toString())
+            substitute module('javax.persistence:javax.persistence-api') with module(libs.javax.persistenceApi.get().toString())
+            substitute module('javax.validation:validation-api') with module(libs.javax.validationApi.get().toString())
+            substitute module('javax.ws.rs:javax.ws.rs-api') with module(libs.javax.restApi.get().toString())
+        }
+
+        eachDependency { DependencyResolveDetails details ->
+
+            if (details.requested.group == 'com.google.guava' && details.requested.version.contains('jre')) {
+                details.useVersion details.requested.version.replace('jre', 'android')
+                details.because 'we want the Android version of Guava'
+            }
+
+        }
+
+    }
+}
+
+pluginManager.withPlugin('jacoco') {
+    jacoco {
+        toolVersion = '0.8.8'
+    }
+}
+
+pluginManager.withPlugin('java') {
+
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+
+    [compileJava, compileTestJava]*.options.collect { options ->
+        options.compilerArgs.add '-parameters'
+        options.encoding = 'UTF-8'
+    }
+
+}

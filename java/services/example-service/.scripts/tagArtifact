@@ -1,4 +1,0 @@
-#!/bin/sh -e
-
-# TODO
-../.scripts/tagArtifact "$@" $(cat .scripts/serviceName)

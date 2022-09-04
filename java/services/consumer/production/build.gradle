@@ -1,0 +1,39 @@
+plugins {
+    alias(libs.plugins.jib)
+}
+
+group = 'com.tray.service'
+
+ext {
+    mainClassName = 'com.tray.service.consumer.Server'
+    dockerImageName = '203345496293.dkr.ecr.us-east-2.amazonaws.com/services/consumer'
+}
+
+dependencies {
+
+    implementation 'com.tray.api.internal:consumer-api'
+    implementation 'com.tray.api.internal:orders-api'
+    implementation 'com.tray.webpieces:server-lib'
+
+    implementation libs.javax.persistenceApi
+    implementation libs.webpieces.http.server
+    //optional plugin for if you have a json api
+    implementation libs.webpieces.plugin.jackson
+    implementation libs.webpieces.plugin.sslcert
+
+    testImplementation libs.webpieces.http.server.test
+    testImplementation libs.webpieces.core.ddl
+    //A library that does everything mockito does but in just one class(so therefore, way easier to debug)
+    testImplementation libs.webpieces.core.mock
+
+}
+
+//NOTE: jar section has to go AFTER dependencies section to read all dependencies
+jar {
+    manifest.attributes(
+            "Class-Path": configurations.runtimeClasspath.files.collect { it.name }.join(' '),
+            "Main-Class": mainClassName,
+            'SCM-Revision': getGitHash(),
+            'SCM-Time': getGitTime(),
+    )
+}

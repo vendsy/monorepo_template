@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration scan="true" scanPeriod="30 seconds" debug="true">
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<filter class="org.webpieces.logging.logback.InvertedThresholdFilter">
+			<level>INFO</level>
+	    </filter>
+    
+		<encoder>
+			<pattern>%d{mm:ss.SSS} [%thread] [%X{userId}:%X{fileId}:%X{requestId}:%X{recordId}] %caller{1} %-4level: %message%n</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter"> 
+    	    <level>warn</level>
+    	</filter>
+    
+		<encoder>
+			<pattern>%d{mm:ss.SSS} [%thread] [%X{userId}:%X{fileId}:%X{requestId}:%X{recordId}] %caller{1} %-4level: %message%n</pattern>
+		</encoder>
+		<target>System.err</target>
+	</appender>
+
+    <logger name="jdbc.sqlonly" level="INFO"/>
+    <logger name="jdbc.sqltiming" level="WARN"/>
+    <logger name="jdbc.audit" level="WARN"/>
+    <logger name="jdbc.resultset" level="WARN"/>
+    <logger name="jdbc.connection" level="WARN"/>
+
+	<root>
+		<level value="INFO" />
+		<appender-ref ref="STDOUT"/>
+		<appender-ref ref="STDERR"/>
+	</root>
+</configuration>

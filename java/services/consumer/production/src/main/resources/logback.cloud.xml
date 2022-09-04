@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration scan="false" scanPeriod="30 seconds" debug="false">
+
+	<property name="CONSOLE_PREFIX" value="%-4level [%thread][%X{svrSocket}][%X{txId}:%X{userId}]"/>
+	<property name="CONSOLE_PATTERN" value="${CONSOLE_PREFIX} %class:%n%message%n"/>
+
+	<contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+		<resetJUL>true</resetJUL>
+	</contextListener>
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<filter class="org.webpieces.logging.logback.InvertedThresholdFilter">
+			<level>INFO</level>
+		</filter>
+		<encoder>
+			<pattern>${CONSOLE_PATTERN}</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="STDOUT-SQL" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<!-- %n will need to be added to the end of this pattern when log4jdbc -->
+			<!-- is updated (to not put a newline at the end of its messages) -->
+			<pattern>${CONSOLE_PREFIX}:%n%message</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>WARN</level>
+		</filter>
+		<encoder>
+			<pattern>${CONSOLE_PATTERN}</pattern>
+		</encoder>
+		<target>System.err</target>
+	</appender>
+
+	<!-- TBD for later use for apps that use log4jdbc it doesn't hurt apps that don't use it -->
+	<logger name="jdbc.sqlonly" level="INFO" additivity="false">
+		<appender-ref ref="STDOUT-SQL"/>
+	</logger>
+	<logger name="jdbc.sqltiming" level="WARN"/>
+	<logger name="jdbc.audit" level="WARN"/>
+	<logger name="jdbc.resultset" level="WARN"/>
+	<logger name="jdbc.connection" level="WARN"/>
+
+	<logger name="org.webpieces.router.impl" level="WARN" />
+	<logger name="org.webpieces.asyncserver.impl" level="WARN" />
+
+	<root level="INFO">
+		<appender-ref ref="STDOUT"/>
+		<appender-ref ref="STDERR"/>
+	</root>
+
+</configuration>

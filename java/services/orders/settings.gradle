@@ -1,0 +1,15 @@
+dependencyResolutionManagement {
+    versionCatalogs {
+        libs {
+            from(files("../../config/libs.versions.toml"))
+        }
+    }
+}
+
+include 'production'
+include 'development'
+
+includeBuild '../../libraries/internal-api/orders-api'
+
+includeBuild '../../libraries/internal/server-lib'
+includeBuild '../../libraries/internal/server-dev-lib'

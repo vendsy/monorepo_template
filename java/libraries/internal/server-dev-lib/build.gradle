@@ -1,0 +1,30 @@
+plugins {
+    id 'java-library'
+    id 'checkstyle'
+}
+
+apply from: '../../../config/common.gradle'
+
+group 'com.tray.webpieces'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+
+    api 'com.tray.webpieces:server-lib'
+
+    api libs.digitalforge.sneakythrow
+    api libs.webpieces.http.router.dev
+    api libs.webpieces.http.server
+
+    implementation libs.logback
+    implementation libs.slf4j.jul
+
+}
+
+checkstyle {
+    configFile = rootProject.file('../../../config/checkstyle.xml')
+}

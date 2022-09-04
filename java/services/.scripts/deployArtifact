@@ -1,5 +1,0 @@
-#!/bin/bash -e
-
-# Responsible for deploying a remote artifact to its environment.
-
-# TODO

@@ -1,0 +1,161 @@
+# Java Gradle CircleCI 2.0 configuration file
+# See: https://circleci.com/docs/2.0/language-java/
+version: 2.1
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  build-java:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    resource_class: xlarge
+    docker:
+      # specify the version you desire here
+      - image: cimg/android:2022.08-ndk
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+    working_directory: ~/repo
+
+    environment:
+      GIT_LFS_SKIP_SMUDGE: 1
+      # Customize the JVM maximum heap limit
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+      TERM: dumb
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+    steps:
+      - run:
+          name: Install Git-LFS
+          command: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
+      - checkout
+
+      - init-git-lfs
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "java/config/common.gradle" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run:
+          name: Export Props
+          command: |
+             echo 'export BUILD_NUM=$((CIRCLE_BUILD_NUM + 500000))' >> $BASH_ENV
+             echo 'export APP_VERSION=4.17.${BUILD_NUM}' >> $BASH_ENV
+
+      - run:
+          name: Add and Log version in VERSION file
+          command: |
+             echo "${APP_VERSION}" > VERSION
+             cat VERSION
+             echo "App version to tag git=${APP_VERSION}"
+
+      - run:
+          name: Extract Key to file
+          command: ./tools/ospath/decodeBase64
+
+      - run:
+          name: Build projects
+          command: tools/ospath/monobuild
+          no_output_timeout: 60m
+      
+      - run:
+          name: Tag(lightweight) version in git
+          command: git tag ${APP_VERSION}
+
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: v1-dependencies-{{ checksum "java/config/common.gradle" }}
+
+  deploy-java:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    docker:
+      # specify the version you desire here
+      - image: cimg/openjdk:11.0
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+    working_directory: ~/repo
+
+    environment:
+      GIT_LFS_SKIP_SMUDGE: 1
+      # Customize the JVM maximum heap limit
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+      TERM: dumb
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+    steps:
+      - run:
+          name: Install Git-LFS
+          command: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
+      - checkout
+
+      - init-git-lfs
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "java/config/common.gradle" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run:
+          name: Deploy
+          command: tools/ospath/monobuild deploy
+
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: v1-dependencies-{{ checksum "java/config/common.gradle" }}
+
+
+workflows:
+
+  # Build & test
+  pull-request:
+    jobs:
+      - build-java:
+          context: androidProductionKeys
+          filters:
+            branches:
+              ignore:
+                - main
+
+ # # Build, test, deploy to staging
+ # main:
+ #   jobs:
+ #     - deploy-java:
+ #         filters:
+ #           branches:
+ #             only:
+ #               - main
+
+commands:
+  init-git-lfs:
+    description: "Initializes Git-LFS from cache"
+    steps:
+      - run:
+          name: Collect Git-LFS asset hashes
+          command: git lfs ls-files -l | cut -d' ' -f1 | sort > ~/.gitlfs-assets
+
+      - restore_cache:
+          name: Restore Git-LFS
+          key: v1-git-lfs-{{ checksum "~/.gitlfs-assets" }}
+
+      - run:
+          name: Git-LFS pull
+          command: git lfs pull
+
+      - save_cache:
+          name: "Cache Git-LFS"
+          key: v1-git-lfs-{{ checksum "~/.gitlfs-assets" }}
+          paths:
+            - .git/lfs

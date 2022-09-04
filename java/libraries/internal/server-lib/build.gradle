@@ -1,0 +1,48 @@
+plugins {
+    id 'java-library'
+    id 'checkstyle'
+}
+
+apply from: '../../../config/common.gradle'
+
+group 'com.tray.webpieces'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+
+    api 'com.tray.lib:backend-common'
+
+    api libs.slf4j.api
+    api libs.webpieces.microservice.generateClient
+    api libs.webpieces.microservice.scaffold
+    api libs.webpieces.plugin.jackson
+
+
+    implementation libs.commons.lang3
+    implementation libs.google.cloud.logging
+    implementation libs.javax.restApi
+    implementation libs.logback
+    implementation libs.slf4j.jul
+    implementation libs.webpieces.http.client
+    implementation libs.webpieces.http.server
+    implementation libs.webpieces.plugin.hibernate
+
+}
+
+checkstyle {
+    configFile = rootProject.file('../../../config/checkstyle.xml')
+}
+
+//NOTE: jar section must go AFTER dependencies section to read all dependencies
+jar {
+    manifest.attributes(
+            'Implementation-Title': project.name,
+            'Implementation-Version': getGitVersion(),
+            'SCM-Revision': getGitHash(),
+            'SCM-Time': getGitTime(),
+    )
+}

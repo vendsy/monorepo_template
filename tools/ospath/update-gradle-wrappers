@@ -1,0 +1,20 @@
+#!/bin/bash -e
+
+SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+$SCRIPT_DIR/monorepo-check
+
+if [ $# -ne 1 ]; then
+    echo "Usage: update-gradle-wrappers <version>" >&2
+    exit 1
+fi
+
+case "`uname`" in
+  Darwin )
+    find . -name 'gradle-wrapper.properties' | xargs sed -i '' 's/gradle-.*\.zip$/gradle-'$1'-all.zip/'
+    ;;
+  * )
+    find . -name 'gradle-wrapper.properties' | xargs sed -i 's/gradle-.*\.zip$/gradle-'$1'-all.zip/'
+    ;;
+esac
+

@@ -1,0 +1,5 @@
+*                                               @vendsy/tray-platform
+/java/libraries/internal-api/orders-api         @vendsy/tray-store
+/java/services/orders                           @vendsy/tray-store
+/android                                        @vendsy/android-reviewers
+/java/libraries/tray-common                     @vendsy/android-reviewers

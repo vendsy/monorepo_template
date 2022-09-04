@@ -1,0 +1,12 @@
+#!/bin/bash -e
+
+SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+SIZE=`wc -c $SCRIPT_DIR/../monobuild.jar | sed 's/^ *//' | cut -f1 -d' '`
+
+if [ $SIZE -lt 1000 ]; then
+    echo 'Install git-lfs and run `git lfs install` & `git lfs pull`'
+    exit 1
+fi
+
+java -jar "$SCRIPT_DIR/../monobuild.jar" "$@"

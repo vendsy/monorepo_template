@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+
+base64 -d <<< ${APK_KEYSTORE} > release.jks

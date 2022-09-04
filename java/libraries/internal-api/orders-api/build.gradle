@@ -1,0 +1,25 @@
+plugins {
+    id 'java-library'
+    id 'checkstyle'
+}
+
+apply from: '../../../config/common.gradle'
+
+group 'com.tray.api.internal'
+
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+
+    implementation libs.javax.restApi
+    implementation libs.webpieces.core.future
+
+}
+
+checkstyle {
+    configFile = rootProject.file('../../../config/checkstyle.xml')
+}

@@ -1,5 +1,0 @@
-#!/bin/sh -e
-
-# Responsible for building a local artifact.
-
-./gradlew build "$@"

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration scan="false" scanPeriod="30 seconds" debug="false">
+
+	<property name="CONSOLE_PREFIX" value="%-4level [%thread][%X{svrSocket}][%X{txId}:%X{userId}]"/>
+	<property name="CONSOLE_PATTERN" value="${CONSOLE_PREFIX} %class:%n%message%n"/>
+
+	<contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+		<resetJUL>true</resetJUL>
+	</contextListener>
+
+	<appender name="GCP" class="com.tray.webpieces.server.logging.appender.TrayGCPAppender">
+		<serviceName>orders</serviceName>
+	</appender>
+
+	<!--
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+			<layout class="com.tray.webpieces.server.logging.layout.AWSCloudWatchLayout">
+				<pattern>%message</pattern>
+			</layout>
+		</encoder>
+	</appender>
+
+	<appender name="STDOUT-SQL" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+			<layout class="com.tray.webpieces.server.logging.layout.AWSCloudWatchLayout">
+				<pattern>%message</pattern>
+			</layout>
+		</encoder>
+	</appender>
+	-->
+
+	<!-- TBD for later use for apps that use log4jdbc it doesn't hurt apps that don't use it -->
+	<logger name="jdbc.sqlonly" level="INFO" additivity="false">
+		<appender-ref ref="GCP"/>
+		<!-- <appender-ref ref="STDOUT-SQL"/> -->
+	</logger>
+	<logger name="jdbc.sqltiming" level="WARN"/>
+	<logger name="jdbc.audit" level="WARN"/>
+	<logger name="jdbc.resultset" level="WARN"/>
+	<logger name="jdbc.connection" level="WARN"/>
+
+	<logger name="org.webpieces.router.impl" level="WARN" />
+	<logger name="org.webpieces.asyncserver.impl" level="WARN" />
+
+	<root level="INFO">
+		<appender-ref ref="GCP"/>
+		<!-- <appender-ref ref="STDOUT"/> -->
+	</root>
+
+</configuration>

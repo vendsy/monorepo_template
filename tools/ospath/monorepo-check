@@ -1,0 +1,22 @@
+#!/bin/bash -e
+
+ORIGINAL_DIR=$(pwd)
+DIR=$ORIGINAL_DIR
+
+for i in {1..30}; do
+  if [ -d ".monobuild" ]; then
+    exit 0
+  fi
+
+  if [[ "$PREVIOUS_DIR" == "$DIR" ]]; then
+    echo "Not in monorepo!" >&2
+    exit 1
+  fi
+
+  cd ..
+  PREVIOUS_DIR=$DIR
+  DIR=$(pwd)
+done
+
+echo "Not in monorepo!" >&2
+exit 1

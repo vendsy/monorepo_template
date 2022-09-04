@@ -1,5 +1,0 @@
-#!/bin/sh -e
-
-# Responsible for promoting a remote artifact from one environment to another.
-
-# TODO
