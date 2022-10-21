@@ -2,10 +2,13 @@
 # See: https://circleci.com/docs/2.0/language-java/
 version: 2.1
 
+orbs:
+  aws-cli: circleci/aws-cli@3.1.3
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  build-java:
+  build-job:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     resource_class: xlarge
@@ -27,12 +30,30 @@ jobs:
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
+      #- add_ssh_keys:
+      #    fingerprints:
+      #       - "85:40:56:00:a8:c0:55:the rest of your fingerprint"
       - run:
           name: Install Git-LFS
           command: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
       - checkout
 
       - init-git-lfs
+
+      #unfortunately circleCI has major issue and CD needs the version number so modifying file and commit
+      #causes infinite build loop so short-circuit
+      #move to github actions which I think can avoid this?
+      - run:
+          name: Short Circuit Build Preventing Infinite Builds
+          command: |
+             changes=`git show --name-only ${CIRCLE_SHA1} | tail -n +7`
+             echo "changes='${changes}'"
+             if [ "$changes" = ".REAL_VERSION" ]; then 
+                 #You can only get here if the previous build passed and committed version to .REAL_VERSION
+                 #so we mark the PR/build as success so it can be merged
+                 echo "This was circleCI change and does not affect the build so we proceed with success"
+                 circleci-agent step halt
+             fi
 
       # Download and cache dependencies
       - restore_cache:
@@ -45,14 +66,16 @@ jobs:
           name: Export Props
           command: |
              echo 'export BUILD_NUM=$((CIRCLE_BUILD_NUM + 500000))' >> $BASH_ENV
-             echo 'export APP_VERSION=4.17.${BUILD_NUM}' >> $BASH_ENV
+             echo 'export APP_VERSION=4.19-${BUILD_NUM}' >> $BASH_ENV
 
       - run:
           name: Add and Log version in VERSION file
           command: |
              echo "${APP_VERSION}" > VERSION
+             echo "${APP_VERSION}" > .REAL_VERSION
              cat VERSION
              echo "App version to tag git=${APP_VERSION}"
+             echo "Git hash SHA1=${CIRCLE_SHA1}"
 
       - run:
           name: Extract Key to file
@@ -62,17 +85,29 @@ jobs:
           name: Build projects
           command: tools/ospath/monobuild
           no_output_timeout: 60m
-      
-      - run:
-          name: Tag(lightweight) version in git
-          command: git tag ${APP_VERSION}
+
+      # for android project APK outputs
+      - store_artifacts:
+          path: android/applications/output
+
+      #all microservices output artifacts here
+      - store_artifacts:
+          path: java/services/output/
 
       - save_cache:
           paths:
             - ~/.gradle
           key: v1-dependencies-{{ checksum "java/config/common.gradle" }}
+      
+      - run:
+          name: Tag(lightweight) version in git
+          command: |
+             git config --global user.email "dean.hiller@tray.com"
+             git config --global user.name "CircleCI DeanSetup"
+             git add .REAL_VERSION && git commit -m "add the version file ${APP_VERSION}"
+             git push --set-upstream --tags origin ${CIRCLE_BRANCH}
 
-  deploy-java:
+  deploy-job:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
@@ -93,50 +128,76 @@ jobs:
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
+      #- add_ssh_keys:
+      #    fingerprints:
+      #       - "82:41:57:00:a8:c0:55:rest of fingerprint here. same as above fingerprint"
       - run:
           name: Install Git-LFS
           command: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
       - checkout
-
       - init-git-lfs
 
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "java/config/common.gradle" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+      - run:
+          name: Export Props
+          command: |
+             echo 'export APP_VERSION=$(cat .REAL_VERSION)' >> $BASH_ENV
 
       - run:
-          name: Deploy
-          command: tools/ospath/monobuild deploy
+          name: Tag(lightweight) version in git
+          command: |
+             echo "Tagging with version v${APP_VERSION}"
+             git config --global user.email "dean.hiller@tray.com"
+             git config --global user.name "CircleCI DeanSetup"
+             git tag v${APP_VERSION}
+             git push --set-upstream --tags origin ${CIRCLE_BRANCH}
 
-      - save_cache:
-          paths:
-            - ~/.gradle
-          key: v1-dependencies-{{ checksum "java/config/common.gradle" }}
+      - run:
+          name: Install AWS CLI
+          command: |
+             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+             unzip awscliv2.zip
+             sudo ./aws/install
 
+      - run:
+          name: Run Terraform here
+          command: |
+             echo "not running right now"
+
+      - run:
+          name: Deploy Android Apps to S3
+          command: |
+
+             if [ "$CIRCLE_BRANCH" = "main" ]; then 
+                 ./tools/deploy/deployAndroidApps.sh ${APP_VERSION} dev ${CIRCLE_BRANCH}
+             else
+                 ./tools/deploy/deployAndroidApps.sh ${APP_VERSION} prod ${CIRCLE_BRANCH}
+             fi
+             
 
 workflows:
 
   # Build & test
   pull-request:
     jobs:
-      - build-java:
+      - build-job:
           context: androidProductionKeys
           filters:
             branches:
               ignore:
                 - main
+                - /release_.*/
+  deploy:
+    jobs:
+      - deploy-job:
+          context: awsKeys
+          filters:
+            branches:
+              only:
+                - main
+                - /release_.*/
 
- # # Build, test, deploy to staging
- # main:
- #   jobs:
- #     - deploy-java:
- #         filters:
- #           branches:
- #             only:
- #               - main
+         
+
 
 commands:
   init-git-lfs:
