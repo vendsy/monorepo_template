@@ -1,0 +1,7 @@
+android/applications/*
+android/libraries/*
+java/services/*
+java/libraries/external-api/*
+java/libraries/internal/*
+java/libraries/internal-api/*
+terraform/*
